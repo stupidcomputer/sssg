@@ -10,15 +10,24 @@ EOF
 	exit
 fi
 
+# if we're trying to do anything, check if the directory has a valid root
+if [ ! -f ".sssg_generated" ]; then
+	printf "it doesn't seem like I'm in a static site directory -- is that true?\n"
+	exit 1
+fi
+
 if [ "$1" = "-s" ]; then
 	python3 -m http.server -d output
 	exit
 fi
 
 if [ "$1" = "-d" ]; then
-	ssh netbox 'rm -rf ~/output'
-	scp -P 443 -r ./output ryan@beepboop.systems:~
-	ssh netbox 'sudo -S sh -c "rm -rf /var/www/beepboop.systems; mkdir /var/www/beepboop.systems; cp -r ./output/* /var/www/beepboop.systems/"'
+	if [ -f ".deploy" ]; then
+		sh ./.deploy
+	else
+		printf "configure a deploy script first!\n"
+		exit 1
+	fi
 
 	exit
 fi
@@ -31,12 +40,10 @@ IFS='
 
 mkdir -p ./output
 
-# compile the resume first
-cp -r ../resume ../resume-work
-cd ../resume-work
-pdflatex resume.tex
-cd -
-cp ../resume-work/resume.pdf output/
+# if there's special things that need to run, run them
+if [ -f ".special_commands" ]; then
+	sh ./.special_commands
+fi
 
 for i in $directories; do
 	if [ ! "$i" = "./output" ]; then
